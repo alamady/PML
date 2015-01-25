@@ -1,0 +1,72 @@
+### Coursera's Practical Machine Learning - Prediction Assignment
+ 
+#### Introduction
+In recent years, collection of large amount of data on personal activity has substantially increased using devices such as Jawbone Up, Nike FuelBand, and Fitbit.  In this project, we will use data collected from accelerometers placed on the belt, forearm, arm, and dumbell of 6 participants.  These participants were asked to perform barbell lifts in 5 different ways, correctly and incorrectly. The 5 different ways represent the level of quality in performing the activities and they are provided in the "classe" variable in the set as A, B, C, D, and E.  We will build a classification prediction model to predict the class based on the rest of the variables. 
+
+#### Data Source
+The training and testing data sets used in this project are available from httpd://d396quasar40or.cloud front.net/preachment/pm-training.cs, and httpd://d396quasar40or.cloud front.net/preachment/pm-testing.cs; respectively.
+
+#### Data Preperation for Modeling
+The data can be downloaded from the links above or loaded into R as follows: 
+``` {r, }
+train1 <- read.csv("pml-training.csv", header = T, na.strings= c("NA",""," "))
+test1 <- read.csv("pml-testing.csv", header = T, na.strings= c("NA",""," "))
+dim(train1)
+dim(test1)
+```
+There are 160 columns in the sets with 19,622 observations in training data and 20 observations in the testing data.  Examining the data sets revel many columns with NA values and 7 columns of identification data.  We will remove these columns from both sets because they provide no value for the modeling.
+
+```{r}
+NA_train1 <- apply(train1, 2, function(i) {sum(is.na(i))})
+train2 <- train1[,which(NA_train1 == 0)]
+train3 <- train2[8:length(train2)]
+NA_test1 <- apply(test1, 2, function(i) {sum(is.na(i))})
+test2 <- test1[,which(NA_test1 == 0)]
+test3 <- test2[8:length(test2)]
+dim(train3)
+dim(test3)
+```
+
+Notice the number of columns drops from 160 to 53 (107 columns were removed!).  
+
+#### Exploration of the Cleand Data Set
+Since the prediction we are trying to develop is classification and we have many predictors (52 variables) we will use Random Forest since is less sensitive to unbalance among the tree branches compared to other methods and it can achieve high accuracy.  Examining the variables individually and in pairs for abnormality does not reveal red flags, therefore we can proceed into the modeling part.
+
+#### Creating Data Partition for Cross Validation
+The cleaned training data set (train3) will be partitioned on the target variable **classe** into two sets: **training** and **validation**.  The former will be used to build the model while the latter will be used for cross validation.
+
+```{r, warning=FALSE}
+library(caret)
+inTrain <- createDataPartition(y=train3$classe, p = 0.75, list = FALSE)
+training <- train3[inTrain, ]
+validation <- train3[-inTrain, ]
+```
+
+#### Development of Random Forst Classification Model 
+The Random Forest package can be used to fit the training data set partitioned above using the random forest function with the target variable is **classe** as follows - the model's confusion matrix and other model characteristics are also shown.
+
+```{r, warning=FALSE}
+library(randomForest)
+modelFit <- randomForest(classe ~ ., data=training)
+modelFit
+```
+
+#### Out of Sample Error Estimate and Cross Validation of the Model 
+To estimate out of sample error for the model, we can test the model using validation data set that was not used in the model building. Then we can generate the confusion matrix between the actual value of the classe variable in the validation data set and the model's predicted values.
+
+```{r}
+model_crossValidation <- predict(modelFit, validation)
+confusionMatrix(validation$classe, model_crossValidation)
+```
+
+As seen from the Statistics by Class of the confusion matrix the balanced accuracy across the five classes (A to E) is above 0.99 (or > 99%). Therefore, we can estimate the **out of sample error** to be  below **0.01 (< 1%)**. 
+
+#### Model's Prediction Using the Testing Data Set
+The testing data set contains only 20 observations.  The model's predictions using the testing data set are:
+
+```{r}
+model_testing <- predict(modelFit, test3)
+model_testing
+```
+
+
